@@ -24,6 +24,7 @@ function RecipePlannerPage() {
     const [recipe, setRecipe] = useState<GeneratedRecipeDto | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [suggestion, setSuggestion] = useState("");
 
     useEffect(() => {
         const loadIngredients = async () => {
@@ -39,22 +40,33 @@ function RecipePlannerPage() {
         loadIngredients();
     }, []);
 
-    const addIngredient = async () => {
-        if (!ingredient.trim()) return;
-        try {
-            setError("");
 
-            const newIngredient = await createIngredient({
-                ingredientName: ingredient.trim()
-            });
+const addIngredient = async () => {
+    if (!ingredient.trim()) return;
+    try {
+        setError("");
+        const result = await createIngredient({
+            ingredientName: ingredient.trim()
+        });
 
-            setIngredients(prev => [...prev, newIngredient]);
-            setIngredient("");
-        } catch (error) {
-            console.error("Failed to create ingredient:", error);
-            setError("Could not add this ingredient.");
+        if (!result.added && result.suggestion) {
+            setSuggestion(result.suggestion);
+            return;
         }
-    };
+        if (result.ingredient) {
+            setIngredients(prev => [
+                ...prev,
+                result.ingredient!
+            ]);
+        }
+
+        setIngredient("");
+        setSuggestion("");
+    } catch (error) {
+        console.error("Failed to create ingredient:", error);
+        setError("Could not add this ingredient.");
+    }
+};
 
     const handleDeleteIngredient = async (ingredientId: number) => {
         try {
@@ -222,9 +234,10 @@ function RecipePlannerPage() {
                                     <input
                                         type="text"
                                         value={ingredient}
-                                        onChange={(e) =>
-                                            setIngredient(e.target.value)
-                                        }
+                                        onChange={(e) => {
+                                            setIngredient(e.target.value);
+                                            setSuggestion("");
+                                        }}
                                         onKeyDown={(e) => {
 
                                             if (e.key === "Enter") {
@@ -255,6 +268,18 @@ function RecipePlannerPage() {
                                         Add
                                     </button>
                                 </div>
+
+                                {suggestion && (<div className="mt-4 flex items-center gap-2 text-sm text-white/45">
+                                    <span> Did you mean </span>
+                                        <button onClick={() => {
+                                            setIngredient(suggestion);
+                                            setSuggestion(""); }}
+                                    className="font-medium text-[#C47796] transition hover:text-[#E39BB5]" >
+                                            {suggestion}
+                                        </button>
+                                    <span>?</span>
+                                </div>
+                            )}
 
                                 <div className="mt-7">
                                     <div className="mb-3 flex items-center justify-between">

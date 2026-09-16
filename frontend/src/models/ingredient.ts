@@ -6,3 +6,9 @@ export interface IngredientDto {
 export interface IngredientCreate {
     ingredientName: string;
 }
+
+export interface IngredientCreateResponse {
+    added: boolean;
+    suggestion?: string;
+    ingredient?: IngredientDto;
+}

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, FastAPI,Depends,HTTPException
+import json
 from app.schemas.ingredient import IngredientCreate,IngredientResponse
 from app.config.database import get_db
 from app.models.ingredient import Ingredient
@@ -7,23 +8,47 @@ from app.models.recipeIngredient import RecipeIngredient
 from sqlalchemy.orm import Session
 from app.schemas.recipeIngredient import RecipeIngredientCreate
 from app.schemas.recipe import RecipeCreate,RecipeResponse
+from difflib import get_close_matches
 
 app = FastAPI()
 router = APIRouter()
+
+with open("app/data/ingredients.json", "r") as file:
+    ingredients_list = json.load(file)
 
 @router.get("/recipe")
 async def getRecipe() :
     return "AI Recipe Planner API"
 
 @router.post("/ingredient")
-def createIngredient(ingredient_data: IngredientCreate, db: Session = Depends(get_db)):
-    ingredient = Ingredient(
-        ingredientName = ingredient_data.ingredientName,
+def createIngredient(ingredient_data: IngredientCreate,db: Session = Depends(get_db)) :
+    name = ingredient_data.ingredientName.strip()
+
+    suggestions = get_close_matches(
+        name.lower(),
+        ingredients_list,
+        n=1,
+        cutoff=0.7
     )
+
+    if suggestions and suggestions[0].lower() != name.lower():
+        return {
+            "added": False,
+            "suggestion": suggestions[0]
+        }
+
+    ingredient = Ingredient(
+        ingredientName=name
+    )
+
     db.add(ingredient)
     db.commit()
     db.refresh(ingredient)
-    return ingredient
+
+    return {
+        "added": True,
+        "ingredient": ingredient
+    }
 
 @router.post("/recipe")
 def createRecipe(recipe_data : RecipeCreate,db : Session = Depends(get_db)) :
